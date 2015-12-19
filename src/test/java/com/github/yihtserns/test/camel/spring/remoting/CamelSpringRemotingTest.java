@@ -19,24 +19,23 @@ import com.github.yihtserns.test.camel.spring.remoting.testutil.Service;
 import com.github.yihtserns.test.camel.spring.remoting.testutil.Request;
 import com.github.yihtserns.test.camel.spring.remoting.testutil.Response;
 import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.impl.SimpleRegistry;
 import org.apache.camel.support.ExpressionAdapter;
 import org.junit.Test;
 import org.springframework.remoting.httpinvoker.HttpInvokerProxyFactoryBean;
-import org.springframework.remoting.support.RemoteInvocationResult;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.After;
-import org.springframework.remoting.support.RemoteInvocation;
 
 /**
  * @author yihtserns
  */
 public class CamelSpringRemotingTest {
 
-    private DefaultCamelContext camelContext = new DefaultCamelContext();
+    private SimpleRegistry registry = new SimpleRegistry();
+    private DefaultCamelContext camelContext = new DefaultCamelContext(registry);
 
     @After
     public void stopCamelContext() throws Exception {
@@ -49,20 +48,12 @@ public class CamelSpringRemotingTest {
     public void canServeSpringRemotingCallerUsingCamelJetty() throws Exception {
         final String url = "http://localhost:8088/trigger";
 
+        registry.put("springRemotingBinding", new SpringRemotingHttpBinding());
         camelContext.addRoutes(new RouteBuilder() {
 
             @Override
             public void configure() throws Exception {
-                from("jetty:" + url)
-                        .transform(new ExpressionAdapter() {
-
-                            @Override
-                            public Object evaluate(Exchange exchange) {
-                                RemoteInvocation remoteInvocation = exchange.getIn().getBody(RemoteInvocation.class);
-
-                                return remoteInvocation.getArguments()[0];
-                            }
-                        })
+                from("jetty:" + url + "?httpBindingRef=#springRemotingBinding")
                         .transform(new ExpressionAdapter() {
 
                             @Override
@@ -70,13 +61,6 @@ public class CamelSpringRemotingTest {
                                 Request request = exchange.getIn().getBody(Request.class);
 
                                 return new Response(request.message + " Bye!");
-                            }
-                        })
-                        .transform(new ExpressionAdapter() {
-
-                            @Override
-                            public Object evaluate(Exchange exchange) {
-                                return new RemoteInvocationResult(exchange.getIn().getBody());
                             }
                         });
             }
