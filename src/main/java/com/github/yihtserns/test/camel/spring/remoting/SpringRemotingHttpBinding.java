@@ -33,6 +33,8 @@ import org.springframework.remoting.support.RemoteInvocationResult;
  */
 public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
+    private int bodyParameterIndex = 0;
+
     protected SpringRemotingHttpBinding() {
     }
 
@@ -40,15 +42,23 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
     public void readRequest(HttpServletRequest request, HttpMessage message) {
         super.readRequest(request, message);
 
+        unwrapBody(message);
+    }
+
+    void unwrapBody(Message message) {
         RemoteInvocation remoteInvocation = (RemoteInvocation) message.getBody();
-        message.setBody(remoteInvocation.getArguments()[0]);
+        message.setBody(remoteInvocation.getArguments()[bodyParameterIndex]);
     }
 
     @Override
     public void doWriteResponse(Message message, HttpServletResponse response, Exchange exchange) throws IOException {
-        message.setBody(new RemoteInvocationResult(message.getBody()));
+        wrapBody(message);
 
         super.doWriteResponse(message, response, exchange);
+    }
+
+    void wrapBody(Message message) {
+        message.setBody(new RemoteInvocationResult(message.getBody()));
     }
 
     public static SpringRemotingHttpBinding forServiceInterface(Class<?> serviceInterface) {
@@ -66,7 +76,20 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
                     method);
             throw new IllegalArgumentException(msg);
         }
-        return new SpringRemotingHttpBinding();
+
+        SpringRemotingHttpBinding binding = new SpringRemotingHttpBinding();
+
+        Annotation[][] nParamAnnotations = method.getParameterAnnotations();
+        for (int parameterIndex = 0; parameterIndex < nParamAnnotations.length; parameterIndex++) {
+            Annotation[] paramAnnotations = nParamAnnotations[parameterIndex];
+            for (Annotation paramAnnotation : paramAnnotations) {
+                if (paramAnnotation.annotationType() == Body.class) {
+                    binding.bodyParameterIndex = parameterIndex;
+                }
+            }
+        }
+
+        return binding;
     }
 
     private static boolean hasBodyAnnotation(Method method) {
