@@ -16,8 +16,11 @@
 package com.github.yihtserns.test.camel.spring.remoting;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.camel.Body;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.http.common.DefaultHttpBinding;
@@ -29,6 +32,9 @@ import org.springframework.remoting.support.RemoteInvocationResult;
  * @author yihtserns
  */
 public class SpringRemotingHttpBinding extends DefaultHttpBinding {
+
+    protected SpringRemotingHttpBinding() {
+    }
 
     @Override
     public void readRequest(HttpServletRequest request, HttpMessage message) {
@@ -43,5 +49,34 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
         message.setBody(new RemoteInvocationResult(message.getBody()));
 
         super.doWriteResponse(message, response, exchange);
+    }
+
+    public static SpringRemotingHttpBinding forServiceInterface(Class<?> serviceInterface) {
+        if (!serviceInterface.isInterface()) {
+            throw new IllegalArgumentException("Class must be an interface, but was " + serviceInterface);
+        }
+        Method method = serviceInterface.getMethods()[0];
+        if (method.getParameterTypes().length == 1) {
+            return new SpringRemotingHttpBinding();
+        }
+
+        if (!hasBodyAnnotation(method)) {
+            String msg = String.format(
+                    "One of the parameters of method '%s' must be annotated with @Body",
+                    method);
+            throw new IllegalArgumentException(msg);
+        }
+        return new SpringRemotingHttpBinding();
+    }
+
+    private static boolean hasBodyAnnotation(Method method) {
+        for (Annotation[] paramAnnotations : method.getParameterAnnotations()) {
+            for (Annotation paramAnnotation : paramAnnotations) {
+                if (paramAnnotation.annotationType() == Body.class) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
