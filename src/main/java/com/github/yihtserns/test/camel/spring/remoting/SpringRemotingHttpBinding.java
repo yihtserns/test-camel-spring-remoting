@@ -70,13 +70,21 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
     }
 
     private static boolean hasBodyAnnotation(Method method) {
+        boolean foundBody = false;
         for (Annotation[] paramAnnotations : method.getParameterAnnotations()) {
             for (Annotation paramAnnotation : paramAnnotations) {
-                if (paramAnnotation.annotationType() == Body.class) {
-                    return true;
+                if (paramAnnotation.annotationType() != Body.class) {
+                    continue;
                 }
+                if (foundBody) {
+                    String msg = String.format(
+                            "Only one of the parameters of method '%s' can be annotated with @Body",
+                            method);
+                    throw new IllegalArgumentException(msg);
+                }
+                foundBody = true;
             }
         }
-        return false;
+        return foundBody;
     }
 }

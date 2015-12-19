@@ -55,6 +55,13 @@ public class SpringRemotingHttpBindingTest {
         SpringRemotingHttpBinding.forServiceInterface(OneAnnotatedMultiParamService.class);
     }
 
+    @Test
+    public void shouldThrowWhenMoreThanOneParamIsAnnotatedAsBody() throws Exception {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Only one of the parameters of method 'public abstract java.lang.Object com.github.yihtserns.test.camel.spring.remoting.SpringRemotingHttpBindingTest$MultiAnnotatedMultiParamService.service(java.lang.Object,java.lang.Object,java.lang.Object)' can be annotated with @Body");
+        SpringRemotingHttpBinding.forServiceInterface(MultiAnnotatedMultiParamService.class);
+    }
+
     interface OneParamService {
 
         Object service(Object param);
@@ -68,5 +75,10 @@ public class SpringRemotingHttpBindingTest {
     interface OneAnnotatedMultiParamService {
 
         Object service(Object param1, @Body Object param2, Object param3);
+    }
+
+    interface MultiAnnotatedMultiParamService {
+
+        Object service(Object param1, @Body Object param2, @Body Object param3);
     }
 }
