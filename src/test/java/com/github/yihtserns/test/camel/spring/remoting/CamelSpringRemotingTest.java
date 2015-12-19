@@ -22,6 +22,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.support.ExpressionAdapter;
 import org.junit.Test;
 import org.springframework.remoting.httpinvoker.HttpInvokerProxyFactoryBean;
 import org.springframework.remoting.support.RemoteInvocationResult;
@@ -53,15 +54,29 @@ public class CamelSpringRemotingTest {
             @Override
             public void configure() throws Exception {
                 from("jetty:" + url)
-                        .process(new Processor() {
+                        .transform(new ExpressionAdapter() {
 
                             @Override
-                            public void process(Exchange exchange) throws Exception {
+                            public Object evaluate(Exchange exchange) {
                                 RemoteInvocation remoteInvocation = exchange.getIn().getBody(RemoteInvocation.class);
-                                Request req = (Request) remoteInvocation.getArguments()[0];
-                                String reply = req.message + " Bye!";
 
-                                exchange.getIn().setBody(new RemoteInvocationResult(new Response(reply)));
+                                return remoteInvocation.getArguments()[0];
+                            }
+                        })
+                        .transform(new ExpressionAdapter() {
+
+                            @Override
+                            public Object evaluate(Exchange exchange) {
+                                Request request = exchange.getIn().getBody(Request.class);
+
+                                return new Response(request.message + " Bye!");
+                            }
+                        })
+                        .transform(new ExpressionAdapter() {
+
+                            @Override
+                            public Object evaluate(Exchange exchange) {
+                                return new RemoteInvocationResult(exchange.getIn().getBody());
                             }
                         });
             }
