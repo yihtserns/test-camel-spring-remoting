@@ -42,22 +42,22 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
     public void readRequest(HttpServletRequest request, HttpMessage message) {
         super.readRequest(request, message);
 
-        unwrapBody(message);
+        unwrapRemoteInvocation(message);
     }
 
-    void unwrapBody(Message message) {
+    void unwrapRemoteInvocation(Message message) {
         RemoteInvocation remoteInvocation = (RemoteInvocation) message.getBody();
         message.setBody(remoteInvocation.getArguments()[bodyParameterIndex]);
     }
 
     @Override
     public void doWriteResponse(Message message, HttpServletResponse response, Exchange exchange) throws IOException {
-        wrapBody(message);
+        wrapInRemoteInvocationResult(message);
 
         super.doWriteResponse(message, response, exchange);
     }
 
-    void wrapBody(Message message) {
+    void wrapInRemoteInvocationResult(Message message) {
         message.setBody(new RemoteInvocationResult(message.getBody()));
     }
 

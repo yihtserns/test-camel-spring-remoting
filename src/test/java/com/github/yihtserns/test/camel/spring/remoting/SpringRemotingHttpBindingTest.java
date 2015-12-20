@@ -57,10 +57,10 @@ public class SpringRemotingHttpBindingTest {
         OneParamService service = proxyOf(OneParamService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
         service.service(payload);
 
-        binding.unwrapBody(message);
+        binding.unwrapRemoteInvocation(message);
         assertThat(message.getBody(), is(sameInstance(payload)));
 
-        binding.wrapBody(message);
+        binding.wrapInRemoteInvocationResult(message);
         assertThat(((RemoteInvocationResult) message.getBody()).getValue(), is(payload));
     }
 
@@ -81,7 +81,7 @@ public class SpringRemotingHttpBindingTest {
         OneAnnotatedMultiParamService service = proxyOf(OneAnnotatedMultiParamService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
         service.service("Not Payload 1", payload, "Not Payload 2");
 
-        binding.unwrapBody(message);
+        binding.unwrapRemoteInvocation(message);
         assertThat(message.getBody(), is(payload));
     }
 
