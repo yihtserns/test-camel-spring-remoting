@@ -18,6 +18,9 @@ package com.github.yihtserns.test.camel.spring.remoting;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.camel.Body;
@@ -33,7 +36,7 @@ import org.springframework.remoting.support.RemoteInvocationResult;
  */
 public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
-    private int bodyParameterIndex = 0;
+    private Map<MethodInvocation, MethodInvocation> methodInvocations = new HashMap<MethodInvocation, MethodInvocation>();
 
     protected SpringRemotingHttpBinding() {
     }
@@ -47,7 +50,9 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
     void unwrapRemoteInvocation(Message message) {
         RemoteInvocation remoteInvocation = (RemoteInvocation) message.getBody();
-        message.setBody(remoteInvocation.getArguments()[bodyParameterIndex]);
+        MethodInvocation methodInvocation = methodInvocations.get(MethodInvocation.from(remoteInvocation));
+
+        message.setBody(methodInvocation.getBody(remoteInvocation.getArguments()));
     }
 
     @Override
@@ -65,26 +70,30 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
         if (!serviceInterface.isInterface()) {
             throw new IllegalArgumentException("Class must be an interface, but was " + serviceInterface);
         }
-        Method method = serviceInterface.getMethods()[0];
-        if (method.getParameterTypes().length == 1) {
-            return new SpringRemotingHttpBinding();
-        }
-
-        if (!hasBodyAnnotation(method)) {
-            String msg = String.format(
-                    "One of the parameters of method '%s' must be annotated with @Body",
-                    method);
-            throw new IllegalArgumentException(msg);
-        }
 
         SpringRemotingHttpBinding binding = new SpringRemotingHttpBinding();
+        for (Method method : serviceInterface.getMethods()) {
+            MethodInvocation methodInvocation = MethodInvocation.from(method);
+            binding.methodInvocations.put(methodInvocation, methodInvocation);
 
-        Annotation[][] nParamAnnotations = method.getParameterAnnotations();
-        for (int parameterIndex = 0; parameterIndex < nParamAnnotations.length; parameterIndex++) {
-            Annotation[] paramAnnotations = nParamAnnotations[parameterIndex];
-            for (Annotation paramAnnotation : paramAnnotations) {
-                if (paramAnnotation.annotationType() == Body.class) {
-                    binding.bodyParameterIndex = parameterIndex;
+            if (method.getParameterTypes().length == 1) {
+                continue;
+            }
+
+            if (!hasBodyAnnotation(method)) {
+                String msg = String.format(
+                        "One of the parameters of method '%s' must be annotated with @Body",
+                        method);
+                throw new IllegalArgumentException(msg);
+            }
+
+            Annotation[][] nParamAnnotations = method.getParameterAnnotations();
+            for (int parameterIndex = 0; parameterIndex < nParamAnnotations.length; parameterIndex++) {
+                Annotation[] paramAnnotations = nParamAnnotations[parameterIndex];
+                for (Annotation paramAnnotation : paramAnnotations) {
+                    if (paramAnnotation.annotationType() == Body.class) {
+                        methodInvocation.bodyParameterIndex = parameterIndex;
+                    }
                 }
             }
         }
@@ -109,5 +118,52 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
             }
         }
         return foundBody;
+    }
+
+    private static final class MethodInvocation {
+
+        public int bodyParameterIndex = 0;
+        private String methodName;
+        private Class<?>[] parameterTypes;
+
+        private MethodInvocation(String methodName, Class<?>[] parameterTypes) {
+            this.methodName = methodName;
+            this.parameterTypes = parameterTypes;
+        }
+
+        public Object getBody(Object[] arguments) {
+            return arguments[bodyParameterIndex];
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 79 * hash + (this.methodName != null ? this.methodName.hashCode() : 0);
+            hash = 79 * hash + Arrays.deepHashCode(this.parameterTypes);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final MethodInvocation other = (MethodInvocation) obj;
+            if ((this.methodName == null) ? (other.methodName != null) : !this.methodName.equals(other.methodName)) {
+                return false;
+            }
+            return Arrays.deepEquals(this.parameterTypes, other.parameterTypes);
+        }
+
+        public static MethodInvocation from(Method method) {
+            return new MethodInvocation(method.getName(), method.getParameterTypes());
+        }
+
+        public static MethodInvocation from(RemoteInvocation remoteInvocation) {
+            return new MethodInvocation(remoteInvocation.getMethodName(), remoteInvocation.getParameterTypes());
+        }
     }
 }

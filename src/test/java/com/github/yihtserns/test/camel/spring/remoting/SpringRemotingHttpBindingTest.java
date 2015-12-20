@@ -92,6 +92,40 @@ public class SpringRemotingHttpBindingTest {
         SpringRemotingHttpBinding.forServiceInterface(MultiAnnotatedMultiParamService.class);
     }
 
+    @Test
+    public void canHandleServiceInterfaceWithMultipleMethods() throws Exception {
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(MultiMethodService.class);
+        Object payload = "Expected Payload";
+
+        {
+            DefaultMessage message = new DefaultMessage();
+
+            MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+            service.service(payload);
+
+            binding.unwrapRemoteInvocation(message);
+            assertThat(message.getBody(), is(payload));
+        }
+        {
+            DefaultMessage message = new DefaultMessage();
+
+            MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+            service.service("Not Payload 1", payload);
+
+            binding.unwrapRemoteInvocation(message);
+            assertThat(message.getBody(), is(payload));
+        }
+        {
+            DefaultMessage message = new DefaultMessage();
+
+            MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+            service.service("Not Payload 1", "Not Payload 2", payload);
+
+            binding.unwrapRemoteInvocation(message);
+            assertThat(message.getBody(), is(payload));
+        }
+    }
+
     private static abstract class ConvertMethodCallToRemoteObject implements InvocationHandler {
 
         @Override
@@ -140,5 +174,14 @@ public class SpringRemotingHttpBindingTest {
     interface MultiAnnotatedMultiParamService {
 
         Object service(Object param1, @Body Object param2, @Body Object param3);
+    }
+
+    interface MultiMethodService {
+
+        Object service(Object param);
+
+        Object service(Object param1, @Body Object param2);
+
+        Object service(Object param1, Object param2, @Body Object param3);
     }
 }
