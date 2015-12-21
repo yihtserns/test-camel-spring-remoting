@@ -50,12 +50,13 @@ public class SpringRemotingHttpBindingTest {
      */
     @Test
     public void canCreateBindingWhenSingleParamIsNotAnnotated() {
-        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(OneParamService.class);
+        Class<OneParamService> interfaceClass = OneParamService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
         final DefaultMessage message = new DefaultMessage();
         Object payload = "Expected Payload";
 
-        OneParamService service = proxyOf(OneParamService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+        OneParamService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
         service.service(payload);
 
         binding.unwrapRemoteInvocation(message);
@@ -74,12 +75,13 @@ public class SpringRemotingHttpBindingTest {
 
     @Test
     public void canCreateBindingWhenOneOfParamsIsAnnotatedAsBody() throws Exception {
-        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(OneAnnotatedMultiParamService.class);
+        Class<OneAnnotatedMultiParamService> interfaceClass = OneAnnotatedMultiParamService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
         final DefaultMessage message = new DefaultMessage();
         Object payload = "Expected Payload";
 
-        OneAnnotatedMultiParamService service = proxyOf(OneAnnotatedMultiParamService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+        OneAnnotatedMultiParamService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
         service.service("Not Payload 1", payload, "Not Payload 2");
 
         binding.unwrapRemoteInvocation(message);
@@ -95,13 +97,14 @@ public class SpringRemotingHttpBindingTest {
 
     @Test
     public void canHandleServiceInterfaceWithMultipleMethods() throws Exception {
-        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(MultiMethodService.class);
+        Class<MultiMethodService> interfaceClass = MultiMethodService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
         Object payload = "Expected Payload";
 
         {
             DefaultMessage message = new DefaultMessage();
 
-            MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+            MultiMethodService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
             service.service(payload);
 
             binding.unwrapRemoteInvocation(message);
@@ -110,7 +113,7 @@ public class SpringRemotingHttpBindingTest {
         {
             DefaultMessage message = new DefaultMessage();
 
-            MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+            MultiMethodService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
             service.service("Not Payload 1", payload);
 
             binding.unwrapRemoteInvocation(message);
@@ -119,7 +122,7 @@ public class SpringRemotingHttpBindingTest {
         {
             DefaultMessage message = new DefaultMessage();
 
-            MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+            MultiMethodService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
             service.service("Not Payload 1", "Not Payload 2", payload);
 
             binding.unwrapRemoteInvocation(message);
@@ -129,10 +132,11 @@ public class SpringRemotingHttpBindingTest {
 
     @Test
     public void canExtractHeader() throws Exception {
-        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(WithHeaderService.class);
+        Class<WithHeaderService> interfaceClass = WithHeaderService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
         DefaultMessage message = new DefaultMessage();
-        WithHeaderService service = proxyOf(WithHeaderService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+        WithHeaderService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object body = "Expected Body";
         Object header = "Expected Header";
@@ -145,10 +149,11 @@ public class SpringRemotingHttpBindingTest {
 
     @Test
     public void canHandleWhenSameParamAnnotatedAsBothBodyAndHeader() throws Exception {
-        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(SameHeaderBodyService.class);
+        Class<SameHeaderBodyService> interfaceClass = SameHeaderBodyService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
         DefaultMessage message = new DefaultMessage();
-        SameHeaderBodyService service = proxyOf(SameHeaderBodyService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+        SameHeaderBodyService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object payload = "Expected Payload";
         service.service(payload, "Unused");
@@ -160,10 +165,11 @@ public class SpringRemotingHttpBindingTest {
 
     @Test
     public void canExtractMultipleHeaders() throws Exception {
-        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(MultiHeaderService.class);
+        Class<MultiHeaderService> interfaceClass = MultiHeaderService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
         DefaultMessage message = new DefaultMessage();
-        MultiHeaderService service = proxyOf(MultiHeaderService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+        MultiHeaderService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object timeout = 1000;
         Object id = "Expected ID";
