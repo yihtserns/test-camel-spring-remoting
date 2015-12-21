@@ -199,6 +199,43 @@ public class SpringRemotingHttpBindingTest {
         assertThat(message.getBody(), is(payload));
     }
 
+    @Test
+    public void shouldAlsoIncludeMethodsInSuperclasses() throws Exception {
+        Class<HasParentsService> interfaceClass = HasParentsService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
+
+        {
+            DefaultMessage message = new DefaultMessage();
+            HasParentsService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+            Object payload = "Expected Payload";
+            service.handle(payload, "Not Payload");
+
+            binding.unwrapRemoteInvocation(message);
+            assertThat(message.getBody(), is(payload));
+        }
+        {
+            DefaultMessage message = new DefaultMessage();
+            HasParentsService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+            Object payload = "Expected Payload";
+            service.service(payload);
+
+            binding.unwrapRemoteInvocation(message);
+            assertThat(message.getBody(), is(payload));
+        }
+        {
+            DefaultMessage message = new DefaultMessage();
+            HasParentsService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+            Object payload = "Expected Payload";
+            service.service("Not Payload 1", payload, "Not Payload 2");
+
+            binding.unwrapRemoteInvocation(message);
+            assertThat(message.getBody(), is(payload));
+        }
+    }
+
     private static abstract class ConvertMethodCallToRemoteObject implements InvocationHandler {
 
         @Override
@@ -271,5 +308,10 @@ public class SpringRemotingHttpBindingTest {
     interface MultiHeaderService {
 
         Object service(@Header("timeout") Object timeout, @Header("id") Object id, @Body Object payload);
+    }
+
+    interface HasParentsService extends OneParamService, OneAnnotatedMultiParamService {
+
+        Object handle(@Body Object param1, Object param2);
     }
 }
