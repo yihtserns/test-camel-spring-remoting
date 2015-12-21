@@ -19,6 +19,7 @@ import com.github.yihtserns.test.camel.spring.remoting.testutil.Service;
 import com.github.yihtserns.test.camel.spring.remoting.testutil.Request;
 import com.github.yihtserns.test.camel.spring.remoting.testutil.Response;
 import org.apache.camel.Exchange;
+import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.impl.SimpleRegistry;
@@ -48,7 +49,7 @@ public class CamelSpringRemotingTest {
     public void canServeSpringRemotingCallerUsingCamelJetty() throws Exception {
         final String url = "http://localhost:8088/trigger";
 
-        registry.put("springRemotingBinding", new SpringRemotingHttpBinding());
+        registry.put("springRemotingBinding", SpringRemotingHttpBinding.forServiceInterface(Service.class));
         camelContext.addRoutes(new RouteBuilder() {
 
             @Override
@@ -76,5 +77,39 @@ public class CamelSpringRemotingTest {
         Response response = service.service(new Request("Hi!"));
         assertThat(response, is(notNullValue()));
         assertThat(response.message, is("Hi! Bye!"));
+    }
+
+    @Test
+    public void canGetHeader() throws Exception {
+        final String url = "http://localhost:8088/trigger";
+
+        registry.put("springRemotingBinding", SpringRemotingHttpBinding.forServiceInterface(Service.class));
+        camelContext.addRoutes(new RouteBuilder() {
+
+            @Override
+            public void configure() throws Exception {
+                from("jetty:" + url + "?httpBindingRef=#springRemotingBinding")
+                        .process(new Processor() {
+
+                            @Override
+                            public void process(Exchange exchange) throws Exception {
+                                Request request = exchange.getIn().getMandatoryBody(Request.class);
+                                Long timeout = exchange.getIn().getHeader("timeout", Long.class);
+
+                                exchange.getIn().setBody(new Response(request.message + timeout));
+                            }
+                        });
+            }
+        });
+        camelContext.start();
+
+        HttpInvokerProxyFactoryBean factoryBean = new HttpInvokerProxyFactoryBean();
+        factoryBean.setServiceInterface(Service.class);
+        factoryBean.setServiceUrl(url);
+        factoryBean.afterPropertiesSet();
+        Service service = (Service) factoryBean.getObject();
+
+        Response response = service.service(1000, new Request("Timeout: "));
+        assertThat(response.message, is("Timeout: 1000"));
     }
 }
