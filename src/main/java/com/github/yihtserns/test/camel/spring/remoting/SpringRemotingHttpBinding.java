@@ -35,12 +35,16 @@ import org.springframework.remoting.support.RemoteInvocationResult;
 
 /**
  * @author yihtserns
+ * @see #forServiceInterface(Class)
  */
 public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
     private Map<MethodInvocation, MethodInvocation> methodInvocations = new HashMap<MethodInvocation, MethodInvocation>();
 
-    protected SpringRemotingHttpBinding() {
+    /**
+     * @see #forServiceInterface(Class)
+     */
+    private SpringRemotingHttpBinding() {
     }
 
     @Override
