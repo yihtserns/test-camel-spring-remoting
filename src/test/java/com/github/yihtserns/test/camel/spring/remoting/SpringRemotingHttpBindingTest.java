@@ -182,6 +182,23 @@ public class SpringRemotingHttpBindingTest {
         assertThat(message.getHeader("id"), is(id));
     }
 
+    /**
+     * Not an intentional feature - just documenting a discovery.
+     */
+    @Test
+    public void canAcceptCallWithDifferentServiceInterfaceButSameMethodSignature() throws Exception {
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(OneParamService.class);
+
+        DefaultMessage message = new DefaultMessage();
+        MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+        Object payload = "Expected Payload";
+        service.service(payload);
+
+        binding.unwrapRemoteInvocation(message);
+        assertThat(message.getBody(), is(payload));
+    }
+
     private static abstract class ConvertMethodCallToRemoteObject implements InvocationHandler {
 
         @Override
