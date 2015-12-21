@@ -21,10 +21,12 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.camel.Body;
 import org.apache.camel.Exchange;
+import org.apache.camel.Header;
 import org.apache.camel.Message;
 import org.apache.camel.http.common.DefaultHttpBinding;
 import org.apache.camel.http.common.HttpMessage;
@@ -51,8 +53,10 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
     void unwrapRemoteInvocation(Message message) {
         RemoteInvocation remoteInvocation = (RemoteInvocation) message.getBody();
         MethodInvocation methodInvocation = methodInvocations.get(MethodInvocation.from(remoteInvocation));
+        Object[] arguments = remoteInvocation.getArguments();
 
-        message.setBody(methodInvocation.getBody(remoteInvocation.getArguments()));
+        message.setBody(methodInvocation.getBody(arguments));
+        message.getHeaders().putAll(methodInvocation.getHeaders(arguments));
     }
 
     @Override
@@ -91,8 +95,14 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
             for (int parameterIndex = 0; parameterIndex < nParamAnnotations.length; parameterIndex++) {
                 Annotation[] paramAnnotations = nParamAnnotations[parameterIndex];
                 for (Annotation paramAnnotation : paramAnnotations) {
-                    if (paramAnnotation.annotationType() == Body.class) {
+                    Class<? extends Annotation> annotationType = paramAnnotation.annotationType();
+                    if (annotationType == Body.class) {
                         methodInvocation.bodyParameterIndex = parameterIndex;
+                        continue;
+                    }
+                    if (annotationType == Header.class) {
+                        String headerName = Header.class.cast(paramAnnotation).value();
+                        methodInvocation.addHeaderIndex(parameterIndex, headerName);
                     }
                 }
             }
@@ -123,6 +133,7 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
     private static final class MethodInvocation {
 
         public int bodyParameterIndex = 0;
+        private Map<Integer, String> parameterIndex2HeaderName = new HashMap<Integer, String>();
         private String methodName;
         private Class<?>[] parameterTypes;
 
@@ -131,8 +142,24 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
             this.parameterTypes = parameterTypes;
         }
 
+        public void addHeaderIndex(int parameterIndex, String headerName) {
+            parameterIndex2HeaderName.put(parameterIndex, headerName);
+        }
+
         public Object getBody(Object[] arguments) {
             return arguments[bodyParameterIndex];
+        }
+
+        public Map<String, Object> getHeaders(Object[] arguments) {
+            Map<String, Object> headers = new HashMap<String, Object>();
+
+            for (Entry<Integer, String> entry : parameterIndex2HeaderName.entrySet()) {
+                Integer parameterIndex = entry.getKey();
+                String headerName = entry.getValue();
+                headers.put(headerName, arguments[parameterIndex]);
+            }
+
+            return headers;
         }
 
         @Override

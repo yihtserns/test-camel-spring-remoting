@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import org.apache.camel.Body;
+import org.apache.camel.Header;
 import org.apache.camel.Message;
 import org.apache.camel.impl.DefaultMessage;
 import org.junit.Rule;
@@ -126,6 +127,55 @@ public class SpringRemotingHttpBindingTest {
         }
     }
 
+    @Test
+    public void canExtractHeader() throws Exception {
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(WithHeaderService.class);
+
+        DefaultMessage message = new DefaultMessage();
+        WithHeaderService service = proxyOf(WithHeaderService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+        Object body = "Expected Body";
+        Object header = "Expected Header";
+        service.service(body, header);
+
+        binding.unwrapRemoteInvocation(message);
+        assertThat(message.getBody(), is(body));
+        assertThat(message.getHeader("header"), is(header));
+    }
+
+    @Test
+    public void canHandleWhenSameParamAnnotatedAsBothBodyAndHeader() throws Exception {
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(SameHeaderBodyService.class);
+
+        DefaultMessage message = new DefaultMessage();
+        SameHeaderBodyService service = proxyOf(SameHeaderBodyService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+        Object payload = "Expected Payload";
+        service.service(payload, "Unused");
+
+        binding.unwrapRemoteInvocation(message);
+        assertThat(message.getBody(), is(payload));
+        assertThat(message.getHeader("payload"), is(payload));
+    }
+
+    @Test
+    public void canExtractMultipleHeaders() throws Exception {
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(MultiHeaderService.class);
+
+        DefaultMessage message = new DefaultMessage();
+        MultiHeaderService service = proxyOf(MultiHeaderService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+        Object timeout = 1000;
+        Object id = "Expected ID";
+        Object payload = "Expected Payload";
+        service.service(timeout, id, payload);
+
+        binding.unwrapRemoteInvocation(message);
+        assertThat(message.getBody(), is(payload));
+        assertThat(message.getHeader("timeout"), is(timeout));
+        assertThat(message.getHeader("id"), is(id));
+    }
+
     private static abstract class ConvertMethodCallToRemoteObject implements InvocationHandler {
 
         @Override
@@ -183,5 +233,20 @@ public class SpringRemotingHttpBindingTest {
         Object service(Object param1, @Body Object param2);
 
         Object service(Object param1, Object param2, @Body Object param3);
+    }
+
+    interface WithHeaderService {
+
+        Object service(@Body Object body, @Header("header") Object header);
+    }
+
+    interface SameHeaderBodyService {
+
+        Object service(@Body @Header("payload") Object payload, Object unused);
+    }
+
+    interface MultiHeaderService {
+
+        Object service(@Header("timeout") Object timeout, @Header("id") Object id, @Body Object payload);
     }
 }
