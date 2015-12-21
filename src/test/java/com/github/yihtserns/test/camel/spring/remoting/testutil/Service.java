@@ -15,10 +15,17 @@
  */
 package com.github.yihtserns.test.camel.spring.remoting.testutil;
 
+import org.apache.camel.Body;
+import org.apache.camel.Header;
+
 /**
  * @author yihtserns
  */
 public interface Service {
 
     Response service(Request req);
+
+    Response service(
+            @Header("timeout") long timeout,
+            @Body Request req);
 }
