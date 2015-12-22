@@ -21,6 +21,7 @@ import com.github.yihtserns.test.camel.spring.remoting.testutil.Response;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.impl.SimpleRegistry;
 import org.apache.camel.support.ExpressionAdapter;
@@ -111,5 +112,42 @@ public class CamelSpringRemotingTest {
 
         Response response = service.service(1000, new Request("Timeout: "));
         assertThat(response.message, is("Timeout: 1000"));
+    }
+
+    @Test
+    public void noIssueWhenServiceReturnTypeIsVoid() throws Exception {
+        final String url = "http://localhost:8088/trigger";
+
+        registry.put("springRemotingBinding", SpringRemotingHttpBinding.forServiceInterface(Service.class));
+        camelContext.addRoutes(new RouteBuilder() {
+
+            @Override
+            public void configure() throws Exception {
+                from("jetty:" + url + "?httpBindingRef=#springRemotingBinding")
+                        .transform(new ExpressionAdapter() {
+
+                            @Override
+                            public Object evaluate(Exchange exchange) {
+                                Request request = exchange.getIn().getBody(Request.class);
+
+                                return request.message + " Bye!";
+                            }
+                        })
+                        .to("mock:mock");
+            }
+        });
+        camelContext.start();
+
+        HttpInvokerProxyFactoryBean factoryBean = new HttpInvokerProxyFactoryBean();
+        factoryBean.setServiceInterface(Service.class);
+        factoryBean.setServiceUrl(url);
+        factoryBean.afterPropertiesSet();
+        Service service = (Service) factoryBean.getObject();
+
+        MockEndpoint mock = camelContext.getEndpoint("mock:mock", MockEndpoint.class);
+
+        mock.expectedBodiesReceived("Hi! Bye!");
+        service.send(new Request("Hi!"));
+        mock.assertIsSatisfied(1000);
     }
 }

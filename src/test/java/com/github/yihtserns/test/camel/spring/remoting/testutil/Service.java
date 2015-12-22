@@ -28,4 +28,6 @@ public interface Service {
     Response service(
             @Header("timeout") long timeout,
             @Body Request req);
+
+    void send(Request req);
 }

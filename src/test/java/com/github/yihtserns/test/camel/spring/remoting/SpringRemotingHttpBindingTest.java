@@ -19,8 +19,10 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import org.apache.camel.Body;
+import org.apache.camel.CamelContext;
 import org.apache.camel.Header;
 import org.apache.camel.Message;
+import org.apache.camel.impl.DefaultExchange;
 import org.apache.camel.impl.DefaultMessage;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,7 +55,7 @@ public class SpringRemotingHttpBindingTest {
         Class<OneParamService> interfaceClass = OneParamService.class;
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
-        final DefaultMessage message = new DefaultMessage();
+        final Message message = newMessage();
         Object payload = "Expected Payload";
 
         OneParamService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
@@ -78,7 +80,7 @@ public class SpringRemotingHttpBindingTest {
         Class<OneAnnotatedMultiParamService> interfaceClass = OneAnnotatedMultiParamService.class;
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
-        final DefaultMessage message = new DefaultMessage();
+        final Message message = newMessage();
         Object payload = "Expected Payload";
 
         OneAnnotatedMultiParamService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
@@ -102,7 +104,7 @@ public class SpringRemotingHttpBindingTest {
         Object payload = "Expected Payload";
 
         {
-            DefaultMessage message = new DefaultMessage();
+            Message message = newMessage();
 
             MultiMethodService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
             service.service(payload);
@@ -111,7 +113,7 @@ public class SpringRemotingHttpBindingTest {
             assertThat(message.getBody(), is(payload));
         }
         {
-            DefaultMessage message = new DefaultMessage();
+            Message message = newMessage();
 
             MultiMethodService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
             service.service("Not Payload 1", payload);
@@ -120,7 +122,7 @@ public class SpringRemotingHttpBindingTest {
             assertThat(message.getBody(), is(payload));
         }
         {
-            DefaultMessage message = new DefaultMessage();
+            Message message = newMessage();
 
             MultiMethodService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
             service.service("Not Payload 1", "Not Payload 2", payload);
@@ -135,7 +137,7 @@ public class SpringRemotingHttpBindingTest {
         Class<WithHeaderService> interfaceClass = WithHeaderService.class;
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
-        DefaultMessage message = new DefaultMessage();
+        Message message = newMessage();
         WithHeaderService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object body = "Expected Body";
@@ -152,7 +154,7 @@ public class SpringRemotingHttpBindingTest {
         Class<SameHeaderBodyService> interfaceClass = SameHeaderBodyService.class;
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
-        DefaultMessage message = new DefaultMessage();
+        Message message = newMessage();
         SameHeaderBodyService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object payload = "Expected Payload";
@@ -168,7 +170,7 @@ public class SpringRemotingHttpBindingTest {
         Class<MultiHeaderService> interfaceClass = MultiHeaderService.class;
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
-        DefaultMessage message = new DefaultMessage();
+        Message message = newMessage();
         MultiHeaderService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object timeout = 1000;
@@ -189,7 +191,7 @@ public class SpringRemotingHttpBindingTest {
     public void canAcceptCallWithDifferentServiceInterfaceButSameMethodSignature() throws Exception {
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(OneParamService.class);
 
-        DefaultMessage message = new DefaultMessage();
+        Message message = newMessage();
         MultiMethodService service = proxyOf(MultiMethodService.class, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
         Object payload = "Expected Payload";
@@ -205,7 +207,7 @@ public class SpringRemotingHttpBindingTest {
         SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
 
         {
-            DefaultMessage message = new DefaultMessage();
+            Message message = newMessage();
             HasParentsService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
             Object payload = "Expected Payload";
@@ -215,7 +217,7 @@ public class SpringRemotingHttpBindingTest {
             assertThat(message.getBody(), is(payload));
         }
         {
-            DefaultMessage message = new DefaultMessage();
+            Message message = newMessage();
             HasParentsService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
             Object payload = "Expected Payload";
@@ -225,7 +227,7 @@ public class SpringRemotingHttpBindingTest {
             assertThat(message.getBody(), is(payload));
         }
         {
-            DefaultMessage message = new DefaultMessage();
+            Message message = newMessage();
             HasParentsService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
 
             Object payload = "Expected Payload";
@@ -233,6 +235,37 @@ public class SpringRemotingHttpBindingTest {
 
             binding.unwrapRemoteInvocation(message);
             assertThat(message.getBody(), is(payload));
+        }
+    }
+
+    @Test
+    public void shouldClearBodyWhenReturnTypeIsVoid() throws Exception {
+        Class<VoidReturnService> interfaceClass = VoidReturnService.class;
+        SpringRemotingHttpBinding binding = SpringRemotingHttpBinding.forServiceInterface(interfaceClass);
+
+        {
+            Message message = newMessage();
+            VoidReturnService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+            service.send("Payload");
+
+            binding.unwrapRemoteInvocation(message);
+            binding.wrapInRemoteInvocationResult(message);
+
+            RemoteInvocationResult result = (RemoteInvocationResult) message.getBody();
+            assertThat(result.getValue(), is(nullValue()));
+        }
+        {
+            Message message = newMessage();
+            VoidReturnService service = proxyOf(interfaceClass, ConvertMethodCallToRemoteObject.setAsBodyOf(message));
+
+            service.service("Payload");
+
+            binding.unwrapRemoteInvocation(message);
+            binding.wrapInRemoteInvocationResult(message);
+
+            RemoteInvocationResult result = (RemoteInvocationResult) message.getBody();
+            assertThat(result.getValue(), is(nullValue()));
         }
     }
 
@@ -264,6 +297,12 @@ public class SpringRemotingHttpBindingTest {
                 SpringRemotingHttpBindingTest.class.getClassLoader(),
                 new Class[]{serviceInterface},
                 invocationHandler));
+    }
+
+    private static Message newMessage() {
+        DefaultMessage message = new DefaultMessage();
+        message.setExchange(new DefaultExchange((CamelContext) null));
+        return message;
     }
 
     interface OneParamService {
@@ -313,5 +352,12 @@ public class SpringRemotingHttpBindingTest {
     interface HasParentsService extends OneParamService, OneAnnotatedMultiParamService {
 
         Object handle(@Body Object param1, Object param2);
+    }
+
+    interface VoidReturnService {
+
+        void send(Object param);
+
+        Void service(Object param);
     }
 }

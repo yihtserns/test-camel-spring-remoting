@@ -39,6 +39,7 @@ import org.springframework.remoting.support.RemoteInvocationResult;
  */
 public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
+    private static final String EXPECTS_RESPONSE = "ExpectsResponse";
     private Map<MethodInvocation, MethodInvocation> methodInvocations = new HashMap<MethodInvocation, MethodInvocation>();
 
     /**
@@ -61,6 +62,7 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
         message.setBody(methodInvocation.getBody(arguments));
         message.getHeaders().putAll(methodInvocation.getHeaders(arguments));
+        message.getExchange().setProperty(EXPECTS_RESPONSE, methodInvocation.expectsResponse());
     }
 
     @Override
@@ -71,7 +73,13 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
     }
 
     void wrapInRemoteInvocationResult(Message message) {
-        message.setBody(new RemoteInvocationResult(message.getBody()));
+        Object result = null;
+
+        if (message.getExchange().getProperty(EXPECTS_RESPONSE, Boolean.class)) {
+            result = message.getBody();
+        }
+
+        message.setBody(new RemoteInvocationResult(result));
     }
 
     public static SpringRemotingHttpBinding forServiceInterface(Class<?> serviceInterface) {
@@ -138,6 +146,7 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
 
         public int bodyParameterIndex = 0;
         private Map<Integer, String> parameterIndex2HeaderName = new HashMap<Integer, String>();
+        private Class<?> returnType = null;
         private String methodName;
         private Class<?>[] parameterTypes;
 
@@ -166,6 +175,12 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
             return headers;
         }
 
+        public boolean expectsResponse() {
+            boolean isVoidType = (returnType == void.class || returnType == Void.class);
+
+            return !isVoidType;
+        }
+
         @Override
         public int hashCode() {
             int hash = 7;
@@ -190,7 +205,10 @@ public class SpringRemotingHttpBinding extends DefaultHttpBinding {
         }
 
         public static MethodInvocation from(Method method) {
-            return new MethodInvocation(method.getName(), method.getParameterTypes());
+            MethodInvocation methodInvocation = new MethodInvocation(method.getName(), method.getParameterTypes());
+            methodInvocation.returnType = method.getReturnType();
+
+            return methodInvocation;
         }
 
         public static MethodInvocation from(RemoteInvocation remoteInvocation) {
